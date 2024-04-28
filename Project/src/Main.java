@@ -14,7 +14,7 @@ import com.mongodb.client.MongoCollection;
 public class Main {
 
     public static Map<Integer, Map<Integer, Long[]>> lastSyncedGlobal = new HashMap<>();
-    public static String path = "/home/yukta/College/sem6/NoSQL/project/Project/src/"; //change path to log files
+    public static String path = "/home/yukta/College/sem6/NoSQL/project/NoSQL-Project/Project/src/"; //change path to log files
 
     public static void main(String[] args) throws SQLException, IOException {
         Scanner scanner = new Scanner(System.in);
@@ -70,7 +70,7 @@ public class Main {
                 System.out.println("\nTriple Store Menu:");
                 System.out.println("1. Update");
                 System.out.println("2. Query");
-                System.out.println("3. Merge (Not Implemented)");
+                System.out.println("3. Merge");
                 System.out.println("4. Exit");
                 System.out.print("Enter your choice: ");
 
@@ -99,8 +99,8 @@ public class Main {
                             server_mongo.updateTriple(collection, subject, predicate, object);
 
                         break;
-                    case 2:
 
+                    case 2:
                         if(server_choice == 1)
                             server_postgres.queryTriple(connection, scanner);
                         if(server_choice == 2)
@@ -120,7 +120,7 @@ public class Main {
 //                            server_mongo.queryTriple(collection, scanner);
 
                         updateLastSyncedLine(server_choice, server_id);
-                        printMap(lastSyncedGlobal);
+                        //printMap(lastSyncedGlobal);
                         break;
 
                     default:
@@ -203,6 +203,31 @@ public class Main {
                     }
                 } else {
                     System.out.print("null");
+                }
+                System.out.println("]");
+            }
+        }
+    }
+
+    //testing func to print
+    public static void printMap1(Map<String, String[]> map) {
+        if (map == null || map.isEmpty()) {
+            System.out.println("Map is empty.");
+            return;
+        }
+
+        for (Map.Entry<String, String[]> entry : map.entrySet()) {
+            String key = entry.getKey();
+            String[] values = entry.getValue();
+
+            System.out.println("Key: " + key);
+
+            if (values == null || values.length == 0) {
+                System.out.println("  Value: (empty)");
+            } else {
+                System.out.print("  Value: [");
+                for (int i = 0; i < values.length; i++) {
+                    System.out.print(values[i] + (i == values.length - 1 ? "" : ", "));
                 }
                 System.out.println("]");
             }

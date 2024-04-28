@@ -6,6 +6,7 @@ import org.bson.conversions.Bson;
 import java.io.*;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -72,7 +73,7 @@ public class MongoDB {
         sequence_no++;
 
         // Write the update entry to a file (replace with your actual file path)
-        try (FileWriter writer = new FileWriter("/home/yukta/College/sem6/NoSQL/project/Project/src/server_2.txt", true)) {
+        try (FileWriter writer = new FileWriter(Main.path + "server_2.txt", true)) {
             writer.append(updateEntry);
             // No need to flush here as FileWriter doesn't buffer by default
         }
@@ -105,13 +106,12 @@ public class MongoDB {
     public static void merge(int serverId, Connection connection) throws IOException {
 
         // Replace with your actual log file paths
-        String localLogFile = "server_2.txt";
-        String remoteLogFile = "server_" + serverId + ".txt";
+        String localLogFile = Main.path + "/server_2.txt";
+        String remoteLogFile = Main.path + "/server_" + serverId + ".txt";
 
         // Merge logs
         mergeLogs(localLogFile, remoteLogFile, serverId, connection);
     }
-
 
     private static void mergeLogs(String localLogFile, String remoteLogFile, int serverId, Connection connection) throws IOException {
 
@@ -130,6 +130,8 @@ public class MongoDB {
             Long currentRemoteseq = 0L;
 
             while ((localLine = localReader.readLine()) != null && currentLocalseq < localLastSynced) {
+                System.out.print("localLine-catchup-current-" + currentLocalseq + "-");
+                System.out.println(localLine);
                 if(localLine.length() == 0)
                     continue;
                 String[] parts = localLine.split(",");
@@ -137,6 +139,8 @@ public class MongoDB {
             }
 
             while ((remoteLine = remoteReader.readLine()) != null && currentRemoteseq < RemoteLastSynced) {
+                System.out.println("remoteLine-catchup-curr-" + currentRemoteseq + "-");
+                System.out.println(remoteLine);
                 if(remoteLine.length() == 0)
                     continue;
                 String[] parts = remoteLine.split(",");
@@ -146,6 +150,8 @@ public class MongoDB {
             Map<String, String[]> latestUpdates = new HashMap<>(); // Track latest updates (subject, predicate) -> object
 
             while ((localLine = localReader.readLine()) != null) {
+                System.out.print("in local file-");
+                System.out.println(localLine);
 
                 String[] localParts = localLine.split(",");
 
@@ -174,6 +180,8 @@ public class MongoDB {
             }
 
             while ((remoteLine = remoteReader.readLine()) != null) {
+                System.out.println("in remote file");
+                System.out.println(remoteLine);
                 String[] remoteParts = remoteLine.split(",");
 
                 currentRemoteseq = Long.parseLong(remoteParts[0]);
@@ -199,6 +207,9 @@ public class MongoDB {
                     latestUpdates.put(key, latestValue);
                 }
             }
+
+            System.out.println("------in merge------");
+            Main.printMap1(latestUpdates);
 
             for (Map.Entry<String, String[]> entry : latestUpdates.entrySet()) {
                 String key = entry.getKey();
@@ -227,29 +238,12 @@ public class MongoDB {
         }
     }
 
-    private static boolean isNewerLine(String timestamp1, String timestamp2) {
-        // Try parsing timestamps
-        LocalDateTime parsedTimestamp1 = parseTimestamp(timestamp1);
-        LocalDateTime parsedTimestamp2 = parseTimestamp(timestamp2);
+    private static boolean isNewerLine(String timestamp1str, String timestamp2str) {
+        Timestamp timestamp1 = Timestamp.valueOf(timestamp1str);
+        Timestamp timestamp2 = Timestamp.valueOf(timestamp2str);
 
-        // Handle missing timestamps (consider one newer if other is present)
-        if (parsedTimestamp1 == null) {
-            return parsedTimestamp2 != null;
-        } else if (parsedTimestamp2 == null) {
-            return true;
-        }
-
-        // Compare parsed timestamps
-        return parsedTimestamp1.isAfter(parsedTimestamp2);
-    }
-
-    private static LocalDateTime parseTimestamp(String timestamp) {
-        try {
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
-            return LocalDateTime.parse(timestamp, formatter);
-        } catch (DateTimeParseException e) {
-            return null;
-        }
+        // Compare timestamps directly
+        return timestamp1.after(timestamp2);
     }
 
     public MongoCollection<Document> getCollection() {

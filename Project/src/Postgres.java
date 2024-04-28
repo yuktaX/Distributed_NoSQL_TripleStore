@@ -1,8 +1,5 @@
 import java.io.*;
 import java.sql.*;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -44,6 +41,7 @@ public class Postgres {
 
         if(resultSet.next()){
             System.out.println("Object already present");
+            System.out.println(resultSet);
             return;
         }
 
@@ -72,7 +70,7 @@ public class Postgres {
         sequence_no++;
 
         // Write the update entry to a file (replace with your actual file path)
-        try (FileWriter writer = new FileWriter("/home/yukta/College/sem6/NoSQL/project/Project/src/server_1.txt", true)) {
+        try (FileWriter writer = new FileWriter( Main.path + "server_1.txt", true)) {
             writer.append(updateEntry);
             // No need to flush here as FileWriter doesn't buffer by default
         }
@@ -136,7 +134,7 @@ public class Postgres {
         BufferedReader remoteReader = new BufferedReader(new FileReader(remoteLogFile));
 
         try {
-            Main.printMap(Main.lastSyncedGlobal);
+            //Main.printMap(Main.lastSyncedGlobal);
 
             //get the lines till latest updated part
             Long[] LastSynced = Main.lastSyncedGlobal.get(1).get(serverId);
@@ -148,7 +146,8 @@ public class Postgres {
             Long currentLocalseq = 0L;
             Long currentRemoteseq = 0L;
 
-            while ((localLine = localReader.readLine()) != null && currentLocalseq < localLastSynced) {
+            while ((localLine = localReader.readLine()) != null && currentLocalseq < localLastSynced - 1) {
+                System.out.print("localLine-catchup-current-" + currentLocalseq + "-");
                 System.out.println(localLine);
                 if(localLine.length() == 0)
                     continue;
@@ -156,7 +155,8 @@ public class Postgres {
                 currentLocalseq = Long.parseLong(parts[0]);
             }
 
-            while ((remoteLine = remoteReader.readLine()) != null && currentRemoteseq < RemoteLastSynced) {
+            while ((remoteLine = remoteReader.readLine()) != null && currentRemoteseq < RemoteLastSynced - 1) {
+                System.out.println("remoteLine-catchup-curr-" + currentRemoteseq + "-");
                 System.out.println(remoteLine);
                 if(remoteLine.length() == 0)
                     continue;
@@ -167,7 +167,7 @@ public class Postgres {
             Map<String, String[]> latestUpdates = new HashMap<>(); // Track latest updates (subject, predicate) -> object
 
             while ((localLine = localReader.readLine()) != null) {
-                System.out.println("in local file");
+                System.out.print("in local file-");
                 System.out.println(localLine);
 
                 String[] localParts = localLine.split(",");
@@ -225,8 +225,8 @@ public class Postgres {
                 }
             }
 
-            System.out.println("in merge");
-            System.out.println(latestUpdates);
+            System.out.println("------in merge------");
+            Main.printMap1(latestUpdates);
 
             for (Map.Entry<String, String[]> entry : latestUpdates.entrySet()) {
                 String key = entry.getKey();
@@ -257,73 +257,13 @@ public class Postgres {
         }
     }
 
+    private static boolean isNewerLine(String timestamp1str, String timestamp2str) {
+        Timestamp timestamp1 = Timestamp.valueOf(timestamp1str);
+        Timestamp timestamp2 = Timestamp.valueOf(timestamp2str);
 
-    private static LocalDateTime parseTimestamp(String timestamp) {
-        try {
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
-            return LocalDateTime.parse(timestamp, formatter);
-        } catch (DateTimeParseException e) {
-            return null;
-        }
-    }
-
-    private static boolean isNewerLine(String timestamp1, String timestamp2) {
-        // Try parsing timestamps
-        LocalDateTime parsedTimestamp1 = parseTimestamp(timestamp1);
-        LocalDateTime parsedTimestamp2 = parseTimestamp(timestamp2);
-
-        // Handle missing timestamps (consider one newer if other is present)
-        if (parsedTimestamp1 == null) {
-            return parsedTimestamp2 != null;
-        } else if (parsedTimestamp2 == null) {
-            return true;
-        }
-
-        // Compare parsed timestamps
-        return parsedTimestamp1.isAfter(parsedTimestamp2);
+        // Compare timestamps directly
+        return timestamp1.after(timestamp2);
     }
 }
 
-//    private static void processLogEntry(String line) {
-//        // Parse log entry (subject, predicate, object) and update triple store using updateTriple()
-//        String[] parts = line.split(",");
-//        String subject = parts[1];
-//        String predicate = parts[2];
-//        String object = parts[3];
-//        updateTriple(subject, predicate, object);
-//    }
-//
-//    private static void writeToLocalLog(String line) throws IOException {
-//        // Append the log line to the local log file
-//        BufferedWriter writer = new BufferedWriter(new FileWriter("server.txt", true));
-//        writer.append(line).append("\n");
-//        writer.close();
-//    }
-//
-
-//
-//    private static int getServerIdFromFilename(String filename) {
-//        // Extract server ID from the remote log file name
-//        return Integer.parseInt(filename.split("_")[1].split("\\.")[0]);
-//    }
-//
-//    // Replace updateTriple() with your actual implementation for updating the triple store
-
-    //    private static Long updateLastSyncedLine(int serverId) throws IOException {
-//        BufferedReader reader = new BufferedReader(new FileReader("server_" + serverId + ".txt"));
-//        try {
-//            String line;
-//            Long lastSequence = lastSyncedLines.get(serverId);
-//            while ((line = reader.readLine()) != null) {
-//                String[] parts = line.split(",");
-//                Long sequence = Long.parseLong(parts[0]);
-//                if (sequence > lastSequence) {
-//                    lastSequence = sequence;
-//                }
-//            }
-//            return lastSequence;
-//        } finally {
-//            reader.close();
-//        }
-//    }
 
