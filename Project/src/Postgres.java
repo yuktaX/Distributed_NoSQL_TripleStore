@@ -123,12 +123,11 @@ public class Postgres {
     public static void merge(int serverId, Connection connection) throws IOException {
 
         // Replace with your actual log file paths
-        String localLogFile = "/home/yukta/College/sem6/NoSQL/project/Project/src/server_1.txt";
-        String remoteLogFile = "/home/yukta/College/sem6/NoSQL/project/Project/src/server_" + serverId + ".txt";
+        String localLogFile = Main.path + "/server_1.txt";
+        String remoteLogFile = Main.path + "/server_" + serverId + ".txt";
 
         // Merge logs
         mergeLogs(localLogFile, remoteLogFile, serverId, connection);
-
     }
 
     private static void mergeLogs(String localLogFile, String remoteLogFile, int serverId, Connection connection) throws IOException {
@@ -138,7 +137,7 @@ public class Postgres {
 
         try {
             Main.printMap(Main.lastSyncedGlobal);
-            //System.out.println(lastSyncedLines);
+
             //get the lines till latest updated part
             Long[] LastSynced = Main.lastSyncedGlobal.get(1).get(serverId);
             Long localLastSynced = LastSynced[0];

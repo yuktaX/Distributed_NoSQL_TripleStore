@@ -37,7 +37,6 @@ public class MongoDB {
     public static void updateTriple(MongoCollection<Document> collection, String subject, String predicate, String object) throws IOException {
 
         //check if triplet already exists to avoid writing duplicates
-
         // Create a filter document to match the triple
         Document filter_check = new Document();
         filter_check.append("subject", subject);
@@ -131,11 +130,15 @@ public class MongoDB {
             Long currentRemoteseq = 0L;
 
             while ((localLine = localReader.readLine()) != null && currentLocalseq < localLastSynced) {
+                if(localLine.length() == 0)
+                    continue;
                 String[] parts = localLine.split(",");
                 currentLocalseq = Long.parseLong(parts[0]);
             }
 
             while ((remoteLine = remoteReader.readLine()) != null && currentRemoteseq < RemoteLastSynced) {
+                if(remoteLine.length() == 0)
+                    continue;
                 String[] parts = remoteLine.split(",");
                 currentRemoteseq = Long.parseLong(parts[0]);
             }
@@ -217,10 +220,6 @@ public class MongoDB {
                 // Call updateTriple with extracted subject, predicate, and object
                 updateTriple(collection, subject, predicate, object);
             }
-
-            //Update local last synced line after successful merge
-            //Long[] LastSyncedUpdated = new Long[] {currentLocalseq, currentRemoteseq};
-            //lastSyncedLines.put(serverId, LastSyncedUpdated);
 
         } finally {
             localReader.close();

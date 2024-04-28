@@ -1,6 +1,5 @@
 import com.mongodb.client.MongoCollection;
 import org.bson.Document;
-
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -15,16 +14,13 @@ import com.mongodb.client.MongoCollection;
 public class Main {
 
     public static Map<Integer, Map<Integer, Long[]>> lastSyncedGlobal = new HashMap<>();
-    public static String path = "/home/yukta/College/sem6/NoSQL/project/Project/src/";
-
-
+    public static String path = "/home/yukta/College/sem6/NoSQL/project/Project/src/"; //change path to log files
 
     public static void main(String[] args) throws SQLException, IOException {
         Scanner scanner = new Scanner(System.in);
 
+        //total servers
         int n = 2;
-
-
 
         //different servers
         Postgres server_postgres = new Postgres();
@@ -135,6 +131,7 @@ public class Main {
 
     }
 
+    //syncs latest updated line after merge
     private static void updateLastSyncedLine(int serverId1, int serverId2) throws IOException {
 
         BufferedReader reader1 = new BufferedReader(new FileReader(path + "server_" + serverId1 + ".txt"));
@@ -174,6 +171,8 @@ public class Main {
             reader2.close();
         }
     }
+
+    //testing func for printing sync map
     public static void printMap(Map<Integer, Map<Integer, Long[]>> map) {
         if (map == null || map.isEmpty()) {
             System.out.println("Map is empty.");
