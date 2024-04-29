@@ -4,12 +4,7 @@ import com.mongodb.client.model.Updates;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import java.io.*;
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
@@ -75,7 +70,6 @@ public class MongoDB {
         // Write the update entry to a file (replace with your actual file path)
         try (FileWriter writer = new FileWriter(Main.path + "server_2.txt", true)) {
             writer.append(updateEntry);
-            // No need to flush here as FileWriter doesn't buffer by default
         }
 
     }
@@ -103,7 +97,7 @@ public class MongoDB {
         System.out.println("New triple inserted!");
     }
 
-    public static void merge(int serverId, Connection connection) throws IOException {
+    public static void merge(int serverId, MongoCollection<Document> connection) throws IOException {
 
         // Replace with your actual log file paths
         String localLogFile = Main.path + "/server_2.txt";
@@ -113,14 +107,15 @@ public class MongoDB {
         mergeLogs(localLogFile, remoteLogFile, serverId, connection);
     }
 
-    private static void mergeLogs(String localLogFile, String remoteLogFile, int serverId, Connection connection) throws IOException {
+    private static void mergeLogs(String localLogFile, String remoteLogFile, int serverId, MongoCollection<Document> connection) throws IOException {
 
         BufferedReader localReader = new BufferedReader(new FileReader(localLogFile));
         BufferedReader remoteReader = new BufferedReader(new FileReader(remoteLogFile));
 
         try {
             //get the lines till latest updated part
-            Long[] LastSynced = lastSyncedLines.get(serverId);
+            //Testing.printMap(Main.lastSyncedGlobal);
+            Long[] LastSynced = Main.lastSyncedGlobal.get(ID).get(serverId);
             Long localLastSynced = LastSynced[0];
             Long RemoteLastSynced = LastSynced[1];
 
@@ -129,33 +124,25 @@ public class MongoDB {
             Long currentLocalseq = 0L;
             Long currentRemoteseq = 0L;
 
-            while ((localLine = localReader.readLine()) != null && currentLocalseq < localLastSynced) {
-                System.out.print("localLine-catchup-current-" + currentLocalseq + "-");
-                System.out.println(localLine);
-                if(localLine.length() == 0)
-                    continue;
-                String[] parts = localLine.split(",");
-                currentLocalseq = Long.parseLong(parts[0]);
-            }
-
-            while ((remoteLine = remoteReader.readLine()) != null && currentRemoteseq < RemoteLastSynced) {
-                System.out.println("remoteLine-catchup-curr-" + currentRemoteseq + "-");
-                System.out.println(remoteLine);
-                if(remoteLine.length() == 0)
-                    continue;
-                String[] parts = remoteLine.split(",");
-                currentRemoteseq = Long.parseLong(parts[0]);
-            }
 
             Map<String, String[]> latestUpdates = new HashMap<>(); // Track latest updates (subject, predicate) -> object
 
             while ((localLine = localReader.readLine()) != null) {
+                if(localLine.length() == 0)
+                    continue;
                 System.out.print("in local file-");
                 System.out.println(localLine);
 
                 String[] localParts = localLine.split(",");
 
                 currentLocalseq = Long.parseLong(localParts[0]);
+
+                if(currentLocalseq <= localLastSynced)
+                    continue;
+
+                System.out.print("in local file NEW-");
+                System.out.println(localLine);
+
                 String localSubject = localParts[1];
                 String localPredicate = localParts[2];
                 String localObject = localParts[3];
@@ -167,24 +154,31 @@ public class MongoDB {
                 String[] latestValue = latestUpdates.get(key);
 
                 if (latestValue == null) {
-
                     String[] tmp = {localObject, localTimestamp};
                     latestUpdates.put(key, tmp);
                     continue;
                 }
                 if (isNewerLine(localTimestamp, latestValue[1])) {
-                    //processLogEntry(remoteLine);
                     latestValue[0] = localObject;
                     latestUpdates.put(key, latestValue);
                 }
             }
 
             while ((remoteLine = remoteReader.readLine()) != null) {
-                System.out.println("in remote file");
+                if(remoteLine.length() == 0)
+                    continue;
+                System.out.print("in remote file-");
                 System.out.println(remoteLine);
                 String[] remoteParts = remoteLine.split(",");
 
                 currentRemoteseq = Long.parseLong(remoteParts[0]);
+
+                if (currentRemoteseq <= RemoteLastSynced)
+                    continue;
+
+                System.out.print("in remote file NEW-");
+                System.out.println(remoteLine);
+
                 String remoteSubject = remoteParts[1];
                 String remotePredicate = remoteParts[2];
                 String remoteObject = remoteParts[3];
@@ -201,15 +195,21 @@ public class MongoDB {
                     latestUpdates.put(key, tmp);
                     continue;
                 }
-                if (isNewerLine(remoteTimestamp, latestValue[1])) {
-                    //processLogEntry(remoteLine);
-                    latestValue[0] = remoteObject;
-                    latestUpdates.put(key, latestValue);
+                try{
+                    if (isNewerLine(remoteTimestamp, latestValue[1])) {
+                        latestValue[0] = remoteObject;
+                        latestUpdates.put(key, latestValue);
+                    }
+                }
+                catch (Exception IllegalArgumentException){
+                    //System.out.print("um");
+                    //System.out.print(remoteTimestamp + "-" + latestValue[1]);
                 }
             }
 
             System.out.println("------in merge------");
-            Main.printMap1(latestUpdates);
+            Testing.printMergeMap(latestUpdates);
+
 
             for (Map.Entry<String, String[]> entry : latestUpdates.entrySet()) {
                 String key = entry.getKey();
@@ -238,7 +238,11 @@ public class MongoDB {
         }
     }
 
-    private static boolean isNewerLine(String timestamp1str, String timestamp2str) {
+    private static boolean isNewerLine(String timestamp1str, String timestamp2str) throws IllegalArgumentException {
+
+        if(timestamp1str.equals(timestamp2str))
+            return false;
+
         Timestamp timestamp1 = Timestamp.valueOf(timestamp1str);
         Timestamp timestamp2 = Timestamp.valueOf(timestamp2str);
 

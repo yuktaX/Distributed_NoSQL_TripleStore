@@ -14,9 +14,7 @@ public class Postgres {
     private static final int ID = 1;
     static long sequence_no = 1;
 
-    public Postgres() {
-
-    }
+    public Postgres() {}
 
     public static Connection connectToDatabase() throws SQLException {
         System.out.println("Connecting to database...");
@@ -72,7 +70,6 @@ public class Postgres {
         // Write the update entry to a file (replace with your actual file path)
         try (FileWriter writer = new FileWriter( Main.path + "server_1.txt", true)) {
             writer.append(updateEntry);
-            // No need to flush here as FileWriter doesn't buffer by default
         }
 
     }
@@ -134,10 +131,9 @@ public class Postgres {
         BufferedReader remoteReader = new BufferedReader(new FileReader(remoteLogFile));
 
         try {
-            //Main.printMap(Main.lastSyncedGlobal);
 
             //get the lines till latest updated part
-            Long[] LastSynced = Main.lastSyncedGlobal.get(1).get(serverId);
+            Long[] LastSynced = Main.lastSyncedGlobal.get(ID).get(serverId);
             Long localLastSynced = LastSynced[0];
             Long RemoteLastSynced = LastSynced[1];
 
@@ -146,33 +142,24 @@ public class Postgres {
             Long currentLocalseq = 0L;
             Long currentRemoteseq = 0L;
 
-            while ((localLine = localReader.readLine()) != null && currentLocalseq < localLastSynced - 1) {
-                System.out.print("localLine-catchup-current-" + currentLocalseq + "-");
-                System.out.println(localLine);
-                if(localLine.length() == 0)
-                    continue;
-                String[] parts = localLine.split(",");
-                currentLocalseq = Long.parseLong(parts[0]);
-            }
-
-            while ((remoteLine = remoteReader.readLine()) != null && currentRemoteseq < RemoteLastSynced - 1) {
-                System.out.println("remoteLine-catchup-curr-" + currentRemoteseq + "-");
-                System.out.println(remoteLine);
-                if(remoteLine.length() == 0)
-                    continue;
-                String[] parts = remoteLine.split(",");
-                currentRemoteseq = Long.parseLong(parts[0]);
-            }
-
             Map<String, String[]> latestUpdates = new HashMap<>(); // Track latest updates (subject, predicate) -> object
 
             while ((localLine = localReader.readLine()) != null) {
+                if(localLine.length() == 0)
+                    continue;
                 System.out.print("in local file-");
                 System.out.println(localLine);
 
                 String[] localParts = localLine.split(",");
 
                 currentLocalseq = Long.parseLong(localParts[0]);
+
+                if(currentLocalseq <= localLastSynced)
+                    continue;
+
+                System.out.print("in local file NEW-");
+                System.out.println(localLine);
+
                 String localSubject = localParts[1];
                 String localPredicate = localParts[2];
                 String localObject = localParts[3];
@@ -197,11 +184,20 @@ public class Postgres {
             }
 
             while ((remoteLine = remoteReader.readLine()) != null) {
-                System.out.println("in remote file");
+                if(remoteLine.length() == 0)
+                    continue;
+                System.out.print("in remote file-");
                 System.out.println(remoteLine);
                 String[] remoteParts = remoteLine.split(",");
 
                 currentRemoteseq = Long.parseLong(remoteParts[0]);
+
+                if (currentRemoteseq <= RemoteLastSynced)
+                    continue;
+
+                System.out.print("in remote file NEW-");
+                System.out.println(remoteLine);
+
                 String remoteSubject = remoteParts[1];
                 String remotePredicate = remoteParts[2];
                 String remoteObject = remoteParts[3];
@@ -218,15 +214,20 @@ public class Postgres {
                     latestUpdates.put(key, tmp);
                     continue;
                 }
-                if (isNewerLine(remoteTimestamp, latestValue[1])) {
-                    //processLogEntry(remoteLine);
-                    latestValue[0] = remoteObject;
-                    latestUpdates.put(key, latestValue);
+                try {
+                    if (isNewerLine(remoteTimestamp, latestValue[1])) {
+                        latestValue[0] = remoteObject;
+                        latestUpdates.put(key, latestValue);
+                    }
+                }
+                catch (Exception IllegalArgumentException){
+                    //System.out.print("um");
+                    //System.out.print(remoteTimestamp + "-" + latestValue[1]);
                 }
             }
 
             System.out.println("------in merge------");
-            Main.printMap1(latestUpdates);
+            Testing.printMergeMap(latestUpdates);
 
             for (Map.Entry<String, String[]> entry : latestUpdates.entrySet()) {
                 String key = entry.getKey();
@@ -257,7 +258,11 @@ public class Postgres {
         }
     }
 
-    private static boolean isNewerLine(String timestamp1str, String timestamp2str) {
+    private static boolean isNewerLine(String timestamp1str, String timestamp2str) throws IllegalArgumentException {
+
+        if(timestamp1str.equals(timestamp2str))
+            return false;
+
         Timestamp timestamp1 = Timestamp.valueOf(timestamp1str);
         Timestamp timestamp2 = Timestamp.valueOf(timestamp2str);
 

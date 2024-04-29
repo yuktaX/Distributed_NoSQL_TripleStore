@@ -2,19 +2,19 @@ import com.mongodb.client.MongoCollection;
 import org.bson.Document;
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
-import com.mongodb.client.MongoCollection;
 
 public class Main {
 
     public static Map<Integer, Map<Integer, Long[]>> lastSyncedGlobal = new HashMap<>();
     public static String path = "/home/yukta/College/sem6/NoSQL/project/NoSQL-Project/Project/src/"; //change path to log files
+    public static Map<Integer, String> servers = new HashMap<>();
 
     public static void main(String[] args) throws SQLException, IOException {
         Scanner scanner = new Scanner(System.in);
@@ -25,6 +25,11 @@ public class Main {
         //different servers
         Postgres server_postgres = new Postgres();
         MongoDB server_mongo = new MongoDB();
+
+        System.out.println(isNewerLine("1714386668050", "1714386668050"));
+
+        servers.put(1, "Postgres");
+        servers.put(2, "MongoDB");
 
         //initialize last synced logs
         for(int i = 1; i <= n; i++){
@@ -51,12 +56,7 @@ public class Main {
 
         while(true) {
 
-            System.out.println("\nChoose your server:");
-            System.out.println("Server 1 - Postgres");
-            System.out.println("Server 2 - MongoDB");
-            System.out.println("Server 3 (inprogress)");
-            System.out.println("4. Exit");
-            System.out.print("Enter your choice: ");
+            Console.printServerMenu();
 
             int server_choice = scanner.nextInt();
 
@@ -67,12 +67,8 @@ public class Main {
             }
 
             while (true) {
-                System.out.println("\nTriple Store Menu:");
-                System.out.println("1. Update");
-                System.out.println("2. Query");
-                System.out.println("3. Merge");
-                System.out.println("4. Exit");
-                System.out.print("Enter your choice: ");
+
+                Console.printStoreMenu(server_choice);
 
                 int choice = scanner.nextInt();
 
@@ -112,13 +108,21 @@ public class Main {
                         System.out.print("Enter server to merge with: ");
                         int server_id = scanner.nextInt();
 
-                        if(server_choice == 1)
+                        if(server_choice == 1) {
                             server_postgres.merge(server_id, connection);
-                            //server_mongo.merge()
+                            System.out.print("-------MERGE ONE DONE-------");
+                            server_mongo.merge(1, collection);
+                            System.out.print("-------MERGE TWO DONE-------");
+                        }
 
-//                        if(server_choice == 2)
-//                            server_mongo.queryTriple(collection, scanner);
+                        if(server_choice == 2) {
+                            server_mongo.merge(server_id, collection);
+                            System.out.print("-------MERGE ONE DONE-------");
+                            server_postgres.merge(2, connection);
+                            System.out.print("-------MERGE TWO DONE-------");
+                        }
 
+                        //syncing latest line after merging;
                         updateLastSyncedLine(server_choice, server_id);
                         //printMap(lastSyncedGlobal);
                         break;
@@ -172,66 +176,14 @@ public class Main {
         }
     }
 
-    //testing func for printing sync map
-    public static void printMap(Map<Integer, Map<Integer, Long[]>> map) {
-        if (map == null || map.isEmpty()) {
-            System.out.println("Map is empty.");
-            return;
-        }
+    private static boolean isNewerLine(String timestamp1str, String timestamp2str) {
+        if(timestamp1str.equals(timestamp2str))
+            return false;
 
-        for (Map.Entry<Integer, Map<Integer, Long[]>> outerEntry : map.entrySet()) {
-            int outerKey = outerEntry.getKey();
-            Map<Integer, Long[]> innerMap = outerEntry.getValue();
+        Timestamp timestamp1 = Timestamp.valueOf(timestamp1str);
+        Timestamp timestamp2 = Timestamp.valueOf(timestamp2str);
 
-            System.out.println("Outer Key: " + outerKey);
-
-            if (innerMap == null || innerMap.isEmpty()) {
-                System.out.println("  Inner Map is empty.");
-                continue;
-            }
-
-            for (Map.Entry<Integer, Long[]> innerEntry : innerMap.entrySet()) {
-                int innerKey = innerEntry.getKey();
-                Long[] innerValue = innerEntry.getValue();
-
-                System.out.println("    Inner Key: " + innerKey);
-                System.out.print("      Inner Value: [");
-
-                if (innerValue != null && innerValue.length > 0) {
-                    for (int i = 0; i < innerValue.length; i++) {
-                        System.out.print(innerValue[i] + (i == innerValue.length - 1 ? "" : ", "));
-                    }
-                } else {
-                    System.out.print("null");
-                }
-                System.out.println("]");
-            }
-        }
+        // Compare timestamps directly
+        return timestamp1.after(timestamp2);
     }
-
-    //testing func to print
-    public static void printMap1(Map<String, String[]> map) {
-        if (map == null || map.isEmpty()) {
-            System.out.println("Map is empty.");
-            return;
-        }
-
-        for (Map.Entry<String, String[]> entry : map.entrySet()) {
-            String key = entry.getKey();
-            String[] values = entry.getValue();
-
-            System.out.println("Key: " + key);
-
-            if (values == null || values.length == 0) {
-                System.out.println("  Value: (empty)");
-            } else {
-                System.out.print("  Value: [");
-                for (int i = 0; i < values.length; i++) {
-                    System.out.print(values[i] + (i == values.length - 1 ? "" : ", "));
-                }
-                System.out.println("]");
-            }
-        }
-    }
-
 }
