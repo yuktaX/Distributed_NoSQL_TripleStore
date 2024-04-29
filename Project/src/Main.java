@@ -26,8 +26,6 @@ public class Main {
         Postgres server_postgres = new Postgres();
         MongoDB server_mongo = new MongoDB();
 
-        System.out.println(isNewerLine("1714386668050", "1714386668050"));
-
         servers.put(1, "Postgres");
         servers.put(2, "MongoDB");
 
@@ -174,16 +172,5 @@ public class Main {
             reader1.close();
             reader2.close();
         }
-    }
-
-    private static boolean isNewerLine(String timestamp1str, String timestamp2str) {
-        if(timestamp1str.equals(timestamp2str))
-            return false;
-
-        Timestamp timestamp1 = Timestamp.valueOf(timestamp1str);
-        Timestamp timestamp2 = Timestamp.valueOf(timestamp2str);
-
-        // Compare timestamps directly
-        return timestamp1.after(timestamp2);
     }
 }
