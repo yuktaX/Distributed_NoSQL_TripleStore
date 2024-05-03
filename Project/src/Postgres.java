@@ -6,7 +6,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-public class Postgres {
+public class Postgres extends Server {
 
     private static final String DATABASE_URL = "jdbc:postgresql://localhost:5432/NoSQL_project";
     private static final String USERNAME = "postgres";
@@ -27,21 +27,7 @@ public class Postgres {
         return DriverManager.getConnection(DATABASE_URL, USERNAME, PASSWORD);
     }
 
-    public static void updateTriple(Connection connection, String subject, String predicate, String object) throws SQLException, IOException {
-
-        //check if already present, then dont update or write to file
-        String check = "SELECT * FROM sample_yago WHERE subject = ? AND predicate = ? AND object = ?";
-        PreparedStatement check_statement = connection.prepareStatement(check);
-        check_statement.setString(1, subject);
-        check_statement.setString(2, predicate);
-        check_statement.setString(3, object);
-        ResultSet resultSet = check_statement.executeQuery();
-
-        if(resultSet.next()){
-            System.out.println("Object already present");
-            System.out.println(resultSet);
-            return;
-        }
+    public static void updateTriple(Connection connection, String subject, String predicate, String object, String time) throws SQLException, IOException {
 
         String sql = "UPDATE sample_yago SET object = ? WHERE subject = ? AND predicate = ?";
         PreparedStatement statement = connection.prepareStatement(sql);
@@ -58,9 +44,12 @@ public class Postgres {
         }
         statement.close();
 
-        //write to log file after update
-        // Get current timestamp
-        long timestamp = System.currentTimeMillis();
+        //write to log file after update, get current timestamp if not a merge write
+        long timestamp;
+        if (time.length() == 0)
+            timestamp = System.currentTimeMillis();
+        else
+            timestamp = Long.parseLong(time);
 
         // Format the update entry
         String updateEntry = String.format("%d,%s,%s,%s,%d\n", sequence_no, subject, predicate, object, timestamp);
@@ -75,7 +64,7 @@ public class Postgres {
     }
 
     public static void queryTriple(Connection connection, Scanner scanner) throws SQLException {
-        System.out.print("Enter subject to query (or leave blank for all): ");
+        System.out.print("Enter subject to query: ");
         scanner.nextLine();
         String subject = scanner.nextLine(); // Consume extra newline
 
@@ -115,159 +104,40 @@ public class Postgres {
         statement.close();
     }
 
-    public static void merge(int serverId, Connection connection) throws IOException {
+    public static void merge(int serverId, Connection connection) throws IOException, SQLException {
 
         // Replace with your actual log file paths
         String localLogFile = Main.path + "/server_1.txt";
         String remoteLogFile = Main.path + "/server_" + serverId + ".txt";
 
         // Merge logs
-        mergeLogs(localLogFile, remoteLogFile, serverId, connection);
-    }
+        Map<String, String[]> latestUpdates = mergeLogs(ID, localLogFile, remoteLogFile, serverId);
 
-    private static void mergeLogs(String localLogFile, String remoteLogFile, int serverId, Connection connection) throws IOException {
+        for (Map.Entry<String, String[]> entry : latestUpdates.entrySet()) {
+            String key = entry.getKey();
+            String[] value = entry.getValue();
 
-        BufferedReader localReader = new BufferedReader(new FileReader(localLogFile));
-        BufferedReader remoteReader = new BufferedReader(new FileReader(remoteLogFile));
-
-        try {
-
-            //get the lines till latest updated part
-            Long[] LastSynced = Main.lastSyncedGlobal.get(ID).get(serverId);
-            Long localLastSynced = LastSynced[0];
-            Long RemoteLastSynced = LastSynced[1];
-
-            String localLine;
-            String remoteLine;
-            Long currentLocalseq = 0L;
-            Long currentRemoteseq = 0L;
-
-            Map<String, String[]> latestUpdates = new HashMap<>(); // Track latest updates (subject, predicate) -> object
-
-            while ((localLine = localReader.readLine()) != null) {
-                if(localLine.length() == 0)
-                    continue;
-                System.out.print("in local file-");
-                System.out.println(localLine);
-
-                String[] localParts = localLine.split(",");
-
-                currentLocalseq = Long.parseLong(localParts[0]);
-
-                if(currentLocalseq <= localLastSynced)
-                    continue;
-
-                System.out.print("in local file NEW-");
-                System.out.println(localLine);
-
-                String localSubject = localParts[1];
-                String localPredicate = localParts[2];
-                String localObject = localParts[3];
-                String localTimestamp = localParts[4]; // Assuming timestamp is the 4th element
-
-                String key = localSubject + "," + localPredicate;
-
-                // Apply last write wins for (subject, predicate) pair based on timestamps
-                String[] latestValue = latestUpdates.get(key);
-
-                if (latestValue == null) {
-
-                    String[] tmp = {localObject, localTimestamp};
-                    latestUpdates.put(key, tmp);
-                    continue;
-                }
-                if (isNewerLine(localTimestamp, latestValue[1])) {
-                    //processLogEntry(remoteLine);
-                    latestValue[0] = localObject;
-                    latestUpdates.put(key, latestValue);
-                }
+            // Split the key (subject,predicate) using comma separator
+            String[] keyParts = key.split(",");
+            if (keyParts.length != 2) {
+                // Handle invalid key format (log a warning or ignore)
+                System.err.println("Invalid key format in map: " + key);
+                continue;
             }
+            String subject = keyParts[0].trim();
+            String predicate = keyParts[1].trim();
 
-            while ((remoteLine = remoteReader.readLine()) != null) {
-                if(remoteLine.length() == 0)
-                    continue;
-                System.out.print("in remote file-");
-                System.out.println(remoteLine);
-                String[] remoteParts = remoteLine.split(",");
+            // Extract object (first element of the value)
+            String object = value[0];
+            String time = value[1];
+            String serverSource = value[2];
 
-                currentRemoteseq = Long.parseLong(remoteParts[0]);
-
-                if (currentRemoteseq <= RemoteLastSynced)
-                    continue;
-
-                System.out.print("in remote file NEW-");
-                System.out.println(remoteLine);
-
-                String remoteSubject = remoteParts[1];
-                String remotePredicate = remoteParts[2];
-                String remoteObject = remoteParts[3];
-                String remoteTimestamp = remoteParts[4]; // Assuming timestamp is the 4th element
-
-                String key = remoteSubject + "," + remotePredicate;
-
-                // Apply last write wins for (subject, predicate) pair based on timestamps
-                String[] latestValue = latestUpdates.get(key);
-
-                if (latestValue == null) {
-
-                    String[] tmp = {remoteObject, remoteTimestamp};
-                    latestUpdates.put(key, tmp);
-                    continue;
-                }
-                try {
-                    if (isNewerLine(remoteTimestamp, latestValue[1])) {
-                        latestValue[0] = remoteObject;
-                        latestUpdates.put(key, latestValue);
-                    }
-                }
-                catch (Exception IllegalArgumentException){
-                    //System.out.print("um");
-                    //System.out.print(remoteTimestamp + "-" + latestValue[1]);
-                }
-            }
-
-            System.out.println("------in merge------");
-            Testing.printMergeMap(latestUpdates);
-
-            for (Map.Entry<String, String[]> entry : latestUpdates.entrySet()) {
-                String key = entry.getKey();
-                String[] value = entry.getValue();
-
-                // Split the key (subject,predicate) using comma separator
-                String[] keyParts = key.split(",");
-                if (keyParts.length != 2) {
-                    // Handle invalid key format (log a warning or ignore)
-                    System.err.println("Invalid key format in map: " + key);
-                    continue;
-                }
-                String subject = keyParts[0].trim();
-                String predicate = keyParts[1].trim();
-
-                // Extract object (first element of the value)
-                String object = value[0];
-
-                // Call updateTriple with extracted subject, predicate, and object
-                updateTriple(connection, subject, predicate, object);
-            }
-
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        } finally {
-            localReader.close();
-            remoteReader.close();
+            // Call updateTriple with extracted subject, predicate, and object
+            // Only call update if local server doesn't have most recent writes i.e serverSource = 1 indicating
+            // remote server has most recent data
+            if (serverSource.equals("1"))
+                updateTriple(connection, subject, predicate, object, time);
         }
-    }
-
-    private static boolean isNewerLine(String timestamp1str, String timestamp2str) throws IllegalArgumentException {
-
-        if(timestamp1str.equals(timestamp2str))
-            return false;
-
-        Timestamp timestamp1 = Timestamp.valueOf(timestamp1str);
-        Timestamp timestamp2 = Timestamp.valueOf(timestamp2str);
-
-        // Compare timestamps directly
-        return timestamp1.after(timestamp2);
     }
 }
 

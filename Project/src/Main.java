@@ -31,14 +31,6 @@ public class Main {
 
         //initialize last synced logs
         for(int i = 1; i <= n; i++){
-//            try {
-//                FileWriter writer = new FileWriter(path + "server_" + i + ".txt");
-//                writer.write("");  // Empty write to clear the file
-//                writer.close();
-//                //System.out.println("File cleared successfully!");
-//            } catch (IOException e) {
-//                System.err.println("Error clearing file: " + e.getMessage());
-//            }
             Map<Integer, Long[]> locals = new HashMap<>();
             for(int j = 1; j <= n; j++){
                 Long[] tmp = new Long[] {0L, 0L};
@@ -88,9 +80,9 @@ public class Main {
                         String object = scanner.nextLine();
 
                         if(server_choice == 1)
-                            server_postgres.updateTriple(connection, subject, predicate, object);
+                            server_postgres.updateTriple(connection, subject, predicate, object, "");
                         if(server_choice == 2)
-                            server_mongo.updateTriple(collection, subject, predicate, object);
+                            server_mongo.updateTriple(collection, subject, predicate, object, "");
 
                         break;
 
@@ -122,7 +114,6 @@ public class Main {
 
                         //syncing latest line after merging;
                         updateLastSyncedLine(server_choice, server_id);
-                        //printMap(lastSyncedGlobal);
                         break;
 
                     default:

@@ -38,7 +38,7 @@ public class Testing {
         }
     }
 
-    //testing func to print
+    //testing func to print merging map
     public static void printMergeMap(Map<String, String[]> map) {
         if (map == null || map.isEmpty()) {
             System.out.println("Map is empty.");
