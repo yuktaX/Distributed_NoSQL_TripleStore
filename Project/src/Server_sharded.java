@@ -17,6 +17,11 @@ public abstract class Server_sharded {
         Long localLastSynced = lastSynced[0];
         Long remoteLastSynced = lastSynced[1];
 
+        //TEST
+        localLastSynced = 99L;
+        remoteLastSynced = 99L;
+
+
         String localLogFile = logFilePath + ID;
         String remoteLogFile = logFilePath + remoteID;
 
@@ -31,6 +36,7 @@ public abstract class Server_sharded {
         int remoteFileIndex = (int) (remoteLastSynced / 100);
         int remoteLineOffset = (int) (remoteLastSynced % 100);
 
+
         Map<String, String[]> latestUpdates = new HashMap<>();
 
         int localLineCount = 0;
@@ -42,27 +48,43 @@ public abstract class Server_sharded {
 
             String localLine;
             int stopper_flg = 0;
+            System.out.println(localLogFile + "_" + String.valueOf(localFileIndex));
 
             while (true) {
 
+                // If processed 100 lines, move to the next local log file
+                if (localLineCount % 100 == 0 && localLineCount > 0) {
+                    System.out.println("SWITCHING");
+                    localFileIndex++;
+                    localLineCount = 0;
+                    localLineOffset = 0;
+                    break;
+                }
+
                 if ((localLine = localReader.readLine()) == null) {
+                    System.out.println("BREAKING");
                     stopper_flg = 1;
                     break;
                 }
 
-                if (localLine.length() == 0)
+                System.out.print(localLineCount + "_" + localLineOffset +  "-in local file-");
+                System.out.println(localLine);
+
+                if (localLine.length() == 0) {
+                    localLineCount++;
                     continue;
+                }
+
                 localLineCount++;
 
                 if (localLineCount < localLineOffset) continue;
-
 
                 // Process the line
                 // Your existing logic for processing the line goes here
                 String[] localParts = localLine.split(",");
                 currentLocalseq = Long.parseLong(localParts[0]);
 
-                System.out.print("in local file NEW-");
+                System.out.print(localLineCount + "_" + "in local file NEW-");
                 System.out.println(localLine);
 
                 String localSubject = localParts[1];
@@ -106,26 +128,41 @@ public abstract class Server_sharded {
             String remoteLine;
             int stopper_flg = 0;
 
+            System.out.println(remoteLogFile + "_" + String.valueOf(remoteFileIndex));
+
             while (true) {
 
+                if (remoteLineCount % 100 == 0 && remoteLineCount > 0) {
+                    System.out.println("SWITCHING");
+                    remoteFileIndex++;
+                    remoteLineCount = 0;
+                    remoteLineOffset = 0;
+                    break;
+                }
+
                 if ((remoteLine = remoteReader.readLine()) == null) {
+                    System.out.println("BREAKING");
                     stopper_flg = 1;
                     break;
                 }
 
-                if (remoteLine.length() == 0)
+                System.out.print(remoteLineCount + "-" + remoteLineOffset + "-in remote file-");
+                System.out.println(remoteLine);
+
+                if (remoteLine.length() == 0) {
+                    remoteLineCount++;
                     continue;
+                }
+
                 remoteLineCount++;
 
                 if (remoteLineCount < remoteLineOffset) continue;
 
-
                 // Process the line
-                // Your existing logic for processing the line goes here
                 String[] remoteParts = remoteLine.split(",");
                 currentLocalseq = Long.parseLong(remoteParts[0]);
 
-                System.out.print("in remote file NEW-");
+                System.out.print(remoteLineCount + "-" + "in remote file NEW-");
                 System.out.println(remoteLine);
 
                 String remoteSubject = remoteParts[1];
@@ -150,13 +187,6 @@ public abstract class Server_sharded {
                     latestUpdates.put(key, latestValue);
                 }
 
-                // If processed 100 lines, move to the next remote log file
-                if (remoteLineCount % 100 == 0) {
-                    remoteFileIndex++;
-                    remoteLineCount = 0;
-                    remoteLineOffset = 0;
-                    break;
-                }
             }
             if(stopper_flg == 1)    break;
 
