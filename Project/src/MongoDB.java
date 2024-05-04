@@ -4,20 +4,21 @@ import com.mongodb.client.model.Updates;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import java.io.*;
+import java.text.ParseException;
 import java.util.Map;
 import java.util.Scanner;
 
-public class MongoDB extends Server {
+public class MongoDB extends Server_sharded {
 
     private static final String CONNECTION_STRING = "mongodb://localhost:27017"; // Adjust if MongoDB runs on a different port
     private static final String DATABASE_NAME = "sample_yago";
     private static final String COLLECTION_NAME = "sample_yago";
     private static final int ID = 2;
-    static long sequence_no = 1;
+    static long sequence_no;
 
     //data members
     private MongoClient mongoClient;
-    private MongoDatabase database;
+    private static MongoDatabase database;
     private static MongoCollection<Document> collection;
 
     static Map<Integer, Long[]> lastSyncedLines = Main.lastSyncedGlobal.get(2);
@@ -41,22 +42,25 @@ public class MongoDB extends Server {
             System.out.println("Triple updated successfully!");
         }
 
-        //write to log file after update, get current timestamp if not a merge write
-        long timestamp;
-        if (time.length() == 0)
-            timestamp = System.currentTimeMillis();
-        else
-            timestamp = Long.parseLong(time);
-
-        // Format the update entry
-        String updateEntry = String.format("%d,%s,%s,%s,%d\n", sequence_no, subject, predicate, object, timestamp);
-        System.out.println(updateEntry);
+        writeLog(ID, sequence_no, subject, predicate, object, time);
         sequence_no++;
 
-        // Write the update entry to a file (replace with your actual file path)
-        try (FileWriter writer = new FileWriter(Main.path + "server_2.txt", true)) {
-            writer.append(updateEntry);
-        }
+//        //write to log file after update, get current timestamp if not a merge write
+//        long timestamp;
+//        if (time.length() == 0)
+//            timestamp = System.currentTimeMillis();
+//        else
+//            timestamp = Long.parseLong(time);
+//
+//        // Format the update entry
+//        String updateEntry = String.format("%d,%s,%s,%s,%d\n", sequence_no, subject, predicate, object, timestamp);
+//        System.out.println(updateEntry);
+//        sequence_no++;
+//
+//        // Write the update entry to a file (replace with your actual file path)
+//        try (FileWriter writer = new FileWriter(Main.path + "server_2.txt", true)) {
+//            writer.append(updateEntry);
+//        }
 
     }
 
@@ -83,14 +87,12 @@ public class MongoDB extends Server {
         System.out.println("New triple inserted!");
     }
 
-    public static void merge(int serverId, MongoCollection<Document> connection) throws IOException {
-
-        // Replace with your actual log file paths
-        String localLogFile = Main.path + "/server_2.txt";
-        String remoteLogFile = Main.path + "/server_" + serverId + ".txt";
+    public static void merge(int serverId, MongoCollection<Document> collection) throws IOException, ParseException {
 
         // Merge logs
-        Map<String, String[]> latestUpdates = mergeLogs(ID, localLogFile, remoteLogFile, serverId);
+        Map<String, String[]> latestUpdates = mergeLogs(ID, serverId);
+
+        Testing.printMergeMap(latestUpdates);
 
         for (Map.Entry<String, String[]> entry : latestUpdates.entrySet()) {
             String key = entry.getKey();
@@ -123,8 +125,32 @@ public class MongoDB extends Server {
         return this.collection;
     }
 
-    public void closeConnection(){
+    public static void start() {
+
+        MongoCollection<Document> collection = database.getCollection("current_seq");
+        Document document = collection.find().first();
+        if (document != null) {
+            Number seqNoNumber = (Number) document.get("seq_no");
+            sequence_no = seqNoNumber.longValue();
+        }
+    }
+
+    // Close method equivalent
+    public void close() {
+        MongoCollection<Document> collection = database.getCollection("current_seq");
+
+        // Clear the collection
+        collection.deleteMany(new Document());
+
+        //temporary reset
+        sequence_no = 1;
+
+        // Insert new value
+        Document newDocument = new Document("seq_no", sequence_no);
+        collection.insertOne(newDocument);
+
         this.mongoClient.close();
     }
+
 }
 

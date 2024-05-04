@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.text.ParseException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
@@ -16,7 +17,7 @@ public class Main {
     public static String path = "/home/yukta/College/sem6/NoSQL/project/NoSQL-Project/Project/src/"; //change path to log files
     public static Map<Integer, String> servers = new HashMap<>();
 
-    public static void main(String[] args) throws SQLException, IOException {
+    public static void main(String[] args) throws SQLException, IOException, ParseException {
         Scanner scanner = new Scanner(System.in);
 
         //total servers
@@ -41,8 +42,11 @@ public class Main {
 
         //connect to postgres
         Connection connection = server_postgres.connectToDatabase();
+        server_postgres.start(connection);
+
         //connect to mongo
         MongoCollection<Document> collection = server_mongo.getCollection();
+        server_mongo.start();
 
         while(true) {
 
@@ -53,6 +57,8 @@ public class Main {
             if (server_choice == 4){
                 System.out.println("Exiting...");
                 scanner.close();
+                server_postgres.close(connection);
+                server_mongo.close();
                 break;
             }
 

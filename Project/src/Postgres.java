@@ -1,18 +1,19 @@
 import java.io.*;
 import java.sql.*;
+import java.text.ParseException;
 import java.util.*;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-public class Postgres extends Server {
+public class Postgres extends Server_sharded {
 
     private static final String DATABASE_URL = "jdbc:postgresql://localhost:5432/NoSQL_project";
     private static final String USERNAME = "postgres";
     private static final String PASSWORD = "postgres";
     private static final int ID = 1;
-    static long sequence_no = 1;
+    static long sequence_no;
 
     public Postgres() {}
 
@@ -24,6 +25,7 @@ public class Postgres extends Server {
             System.err.println("Error loading PostgreSQL driver: " + e.getMessage());
             throw new SQLException("Failed to connect to database");
         }
+
         return DriverManager.getConnection(DATABASE_URL, USERNAME, PASSWORD);
     }
 
@@ -44,22 +46,26 @@ public class Postgres extends Server {
         }
         statement.close();
 
-        //write to log file after update, get current timestamp if not a merge write
-        long timestamp;
-        if (time.length() == 0)
-            timestamp = System.currentTimeMillis();
-        else
-            timestamp = Long.parseLong(time);
-
-        // Format the update entry
-        String updateEntry = String.format("%d,%s,%s,%s,%d\n", sequence_no, subject, predicate, object, timestamp);
-        System.out.println(updateEntry);
+        writeLog(ID, sequence_no, subject, predicate, object, time);
         sequence_no++;
 
-        // Write the update entry to a file (replace with your actual file path)
-        try (FileWriter writer = new FileWriter( Main.path + "server_1.txt", true)) {
-            writer.append(updateEntry);
-        }
+        //write to log file after update, get current timestamp if not a merge write
+//        long timestamp;
+//        if (time.length() == 0)
+//            timestamp = System.currentTimeMillis();
+//        else
+//            timestamp = Long.parseLong(time);
+//
+//        // Format the update entry
+//        String updateEntry = String.format("%d,%s,%s,%s,%d\n", sequence_no, subject, predicate, object, timestamp);
+//        System.out.println(updateEntry);
+//        sequence_no++;
+//
+//        // Write the update entry to a file (replace with your actual file path)
+//        try (FileWriter writer = new FileWriter( Main.path + "server_1.txt", true)) {
+//            writer.append(updateEntry);
+//        }
+
 
     }
 
@@ -104,14 +110,12 @@ public class Postgres extends Server {
         statement.close();
     }
 
-    public static void merge(int serverId, Connection connection) throws IOException, SQLException {
-
-        // Replace with your actual log file paths
-        String localLogFile = Main.path + "/server_1.txt";
-        String remoteLogFile = Main.path + "/server_" + serverId + ".txt";
+    public static void merge(int serverId, Connection connection) throws IOException, SQLException, ParseException {
 
         // Merge logs
-        Map<String, String[]> latestUpdates = mergeLogs(ID, localLogFile, remoteLogFile, serverId);
+        Map<String, String[]> latestUpdates = mergeLogs(ID, serverId);
+
+        Testing.printMergeMap(latestUpdates);
 
         for (Map.Entry<String, String[]> entry : latestUpdates.entrySet()) {
             String key = entry.getKey();
@@ -137,7 +141,33 @@ public class Postgres extends Server {
             // remote server has most recent data
             if (serverSource.equals("1"))
                 updateTriple(connection, subject, predicate, object, time);
+
         }
+    }
+
+    public static void start(Connection connection) throws SQLException {
+        String sql = "SELECT * FROM current_seq";
+        PreparedStatement statement = connection.prepareStatement(sql);
+        ResultSet resultSet = statement.executeQuery();
+
+        while (resultSet.next()) sequence_no = resultSet.getInt("seq_no");
+    }
+
+    public static void close(Connection connection) throws SQLException {
+        String sql = "DELETE FROM current_seq";
+        PreparedStatement statement = connection.prepareStatement(sql);
+        statement.executeUpdate();
+
+        sql = "Insert into current_seq values(?)";
+        statement = connection.prepareStatement(sql);
+
+        //temporary reset
+        sequence_no = 1;
+
+        statement.setLong(1, sequence_no);
+        statement.executeUpdate();
+
+        connection.close();
     }
 }
 
