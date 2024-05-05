@@ -4,31 +4,32 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.sql.Connection;
-import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.text.ParseException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
+import org.neo4j.driver.Driver;
 
 public class Main {
 
     public static Map<Integer, Map<Integer, Long[]>> lastSyncedGlobal = new HashMap<>();
-    public static String path = "/home/yukta/College/sem6/NoSQL/project/NoSQL-Project/Project/src/"; //change path to log files
+    public static String path = "/home/vboxuser/Desktop/Desktop/Nosql/Distributed_NoSQL_TripleStore/Project/src/"; //change path to log files
     public static Map<Integer, String> servers = new HashMap<>();
 
-    public static void main(String[] args) throws SQLException, IOException, ParseException {
+    public static void main(String[] args) throws Exception {
         Scanner scanner = new Scanner(System.in);
 
         //total servers
-        int n = 2;
+        int n = 3;
 
         //different servers
         Postgres server_postgres = new Postgres();
         MongoDB server_mongo = new MongoDB();
+        Neo4j server_neo = new Neo4j();
 
         servers.put(1, "Postgres");
         servers.put(2, "MongoDB");
+        servers.put(3, "Neo4j");
 
         //initialize last synced logs
         for(int i = 1; i <= n; i++){
@@ -48,6 +49,9 @@ public class Main {
         MongoCollection<Document> collection = server_mongo.getCollection();
         server_mongo.start();
 
+        //connect to neo4j
+        Driver driver = server_neo.connectToDatabase();
+
         while(true) {
 
             Console.printServerMenu();
@@ -59,6 +63,7 @@ public class Main {
                 scanner.close();
                 server_postgres.close(connection);
                 server_mongo.close();
+                server_neo.close();
                 break;
             }
 
@@ -90,6 +95,9 @@ public class Main {
                         if(server_choice == 2)
                             server_mongo.updateTriple(collection, subject, predicate, object, "");
 
+                        if(server_choice == 3)
+                            server_neo.updateTriple(driver, subject, predicate, object, "");
+
                         break;
 
                     case 2:
@@ -98,26 +106,51 @@ public class Main {
                         if(server_choice == 2)
                             server_mongo.queryTriple(collection, scanner);
 
+                        if (server_choice == 3)
+                            server_neo.queryTriple(driver,scanner);
+
                         break;
 
                     case 3:
+                    
                         System.out.print("Enter server to merge with: ");
                         int server_id = scanner.nextInt();
 
                         if(server_choice == 1) {
+
                             server_postgres.merge(server_id, connection);
                             System.out.print("-------MERGE ONE DONE-------");
-                            server_mongo.merge(1, collection);
+
+                            if(server_id==2)
+                                server_mongo.merge(server_choice, collection);
+                            else if(server_id==3)
+                                server_neo.merge(server_choice, driver);
+                            
                             System.out.print("-------MERGE TWO DONE-------");
                         }
 
                         if(server_choice == 2) {
                             server_mongo.merge(server_id, collection);
                             System.out.print("-------MERGE ONE DONE-------");
-                            server_postgres.merge(2, connection);
+
+                            if(server_id==1)
+                                server_postgres.merge(server_choice, connection);
+                            else if(server_id==3)
+                                server_neo.merge(server_choice, driver);
                             System.out.print("-------MERGE TWO DONE-------");
                         }
 
+                        if (server_choice == 3){
+                            server_neo.merge(server_id, driver);
+                            System.out.print("-------MERGE ONE DONE-------");
+
+                            if(server_id==1)
+                                server_postgres.merge(server_choice, connection);
+                            else if(server_id==2)
+                                server_mongo.merge(server_choice, collection);
+
+                            System.out.print("-------MERGE TWO DONE-------");
+                        }
                         //syncing latest line after merging;
                         updateLastSyncedLine(server_choice, server_id);
                         break;

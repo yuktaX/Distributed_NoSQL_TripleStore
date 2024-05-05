@@ -4,7 +4,7 @@ public class Console {
         System.out.println("\n\t\033[1mChoose your server:\033[0m"); // Bold for title
         System.out.println("\t1. Server 1 - Postgres");
         System.out.println("\t2. Server 2 - MongoDB");
-        System.out.println("\t3. Server 3 (inprogress)");
+        System.out.println("\t3. Server 3 - Neo4j");
         System.out.println("\t4. Exit");
         System.out.print("\tEnter your choice: ");
     }

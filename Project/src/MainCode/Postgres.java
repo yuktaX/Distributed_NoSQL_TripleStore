@@ -3,12 +3,13 @@ package MainCode;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.sql.*;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
 
 public class Postgres extends Server {
 
-    private static final String DATABASE_URL = "jdbc:postgresql://localhost:5432/NoSQL_project";
+    private static final String DATABASE_URL = "/home/vboxuser/Desktop/Desktop/Nosql/Distributed_NoSQL_TripleStore/Project/src/";
     private static final String USERNAME = "postgres";
     private static final String PASSWORD = "postgres";
     private static final int ID = 1;
@@ -61,6 +62,35 @@ public class Postgres extends Server {
             writer.append(updateEntry);
         }
 
+    }
+
+       public static Map<String, String []> queryTriple(Connection connection, String subject) throws SQLException {
+        String sql = "SELECT * FROM sample_yago";
+        if (subject.length() != 0) {
+            sql += " WHERE subject = ?";
+        } else {
+            System.out.println("No subject entered");
+            return null;
+        }
+
+        PreparedStatement statement = connection.prepareStatement(sql);
+        statement.setString(1, subject);
+
+        ResultSet resultSet = statement.executeQuery();
+
+        Map<String, String []> results = new HashMap<>();
+        while (resultSet.next()) {
+            String retrievedSubject = resultSet.getString("subject");
+            String retrievedPredicate = resultSet.getString("predicate");
+            String retrievedObject = resultSet.getString("object");
+            // System.out.println("Subject: " + retrievedSubject + ", Predicate: " + retrievedPredicate + ", Object: " + retrievedObject);
+            String[] tmp = {retrievedPredicate, retrievedObject};
+            results.put(retrievedSubject,tmp);
+        }
+        resultSet.close();
+        statement.close();
+
+        return results;
     }
 
     public static void queryTriple(Connection connection, Scanner scanner) throws SQLException {
@@ -140,5 +170,4 @@ public class Postgres extends Server {
         }
     }
 }
-
 
