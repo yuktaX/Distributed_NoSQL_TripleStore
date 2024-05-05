@@ -1,17 +1,36 @@
 # NoSQL-Project
-Final project for NoSQL Systems course
+Final project for CS 839 NoSQL Systems course
 
-logic:
-1. Each line in the log file will look like (sequence_no, subject, predicate, object, timestamp).
-2. Each merge function will have a static copy of the latest sequence number read from the logs of other servers, so on calling merge it should merge from last synced line.
-3. First, iterate through both log files to reach the latest synced position.
-4. Next. Read both log files and for each (subject, predicate) pair, look at the latest object that's updated and update the map with (object, timestamp) value.
-5. After iterating thru both logs, the local map will have all the (subject, predicate) pairs with latest write. Update accordingly in both servers.
-6. After this, update the last synced lines.
+## Setting up Databases
 
-To do:
-lot of testing with lot of cases.
-1. The merge for server 2 has to be tested, code hasnt been added yet for this internal call.
+All the below steps assume that you have the softwares installed in your system, if not then do so before going ahead.
+
+### Postgres
+- Create a new DB and follow the steps mentioned in `postgres.sql`
+- Load the data from `test.csv` into the table
+
+
+### MongoDB
+- Create a new DB and load the `test.csv` using the cmd: \
+  `mongoimport --db my_database --collection customers --file [path to file] --headerline --type csv`
+- In this DB, create a new collection for sequence number using the cmd: `db.current_seq.insertOne({ seq_no: 1 })`
+
+### Neo4j
+
+## Setting up the Codebase
+- Download the `Project` folder and set it up on your preferable IDE.
+- Add the following dependencies based on whichever IDE and build you use (Maven/Gradle or internal builds like Intellij IDEA) 
+  1. postgresql-42.7.3.jar
+  2. mongodb-driver-sync-5.0.1.jar
+  3. mongodb-driver-core-5.0.1.jar
+  4. bson-record-codec-5.0.1.jar
+  5. bson-5.0.1.jar
+
+- Change all the file paths based on your local file system
+- Change the DB connection parameters as per your DB name, username and passwords
+- Run the `Main()` function. A terminal menu will appear, query as you choose. You can now interact with the triple store.
+
+
 
 
 
