@@ -9,6 +9,7 @@ import java.util.Map;
 public abstract class Server_sharded {
 
     static String logFilePath = "/home/yukta/College/sem6/NoSQL/project/NoSQL-Project/Project/src/Logs/server_";
+    static int shardSize = 100;
 
     protected static Map<String, String[]> mergeLogs(int ID, int remoteID) throws IOException, ParseException {
 
@@ -18,8 +19,8 @@ public abstract class Server_sharded {
         Long remoteLastSynced = lastSynced[1];
 
         //TEST
-        localLastSynced = 99L;
-        remoteLastSynced = 99L;
+        //localLastSynced = 99L;
+        //remoteLastSynced = 99L;
 
 
         String localLogFile = logFilePath + ID;
@@ -29,12 +30,12 @@ public abstract class Server_sharded {
         Long currentRemoteseq = 0L;
 
         // Find the appropriate local log file and line number to start reading from
-        int localFileIndex = (int) (localLastSynced / 100);
-        int localLineOffset = (int) (localLastSynced % 100);
+        int localFileIndex = (int) (localLastSynced / shardSize);
+        int localLineOffset = (int) (localLastSynced % shardSize);
 
         // Find the appropriate remote log file and line number to start reading from
-        int remoteFileIndex = (int) (remoteLastSynced / 100);
-        int remoteLineOffset = (int) (remoteLastSynced % 100);
+        int remoteFileIndex = (int) (remoteLastSynced / shardSize);
+        int remoteLineOffset = (int) (remoteLastSynced % shardSize);
 
 
         Map<String, String[]> latestUpdates = new HashMap<>();
@@ -52,8 +53,8 @@ public abstract class Server_sharded {
 
             while (true) {
 
-                // If processed 100 lines, move to the next local log file
-                if (localLineCount % 100 == 0 && localLineCount > 0) {
+                // If processed shardSize lines, move to the next local log file
+                if (localLineCount % shardSize == 0 && localLineCount > 0) {
                     System.out.println("SWITCHING");
                     localFileIndex++;
                     localLineCount = 0;
@@ -108,8 +109,8 @@ public abstract class Server_sharded {
                     latestUpdates.put(key, latestValue);
                 }
 
-                // If processed 100 lines, move to the next local log file
-                if (localLineCount % 100 == 0) {
+                // If processed shardSize lines, move to the next local log file
+                if (localLineCount % shardSize == 0) {
                     localFileIndex++;
                     localLineCount = 0;
                     localLineOffset = 0;
@@ -132,7 +133,7 @@ public abstract class Server_sharded {
 
             while (true) {
 
-                if (remoteLineCount % 100 == 0 && remoteLineCount > 0) {
+                if (remoteLineCount % shardSize == 0 && remoteLineCount > 0) {
                     System.out.println("SWITCHING");
                     remoteFileIndex++;
                     remoteLineCount = 0;
@@ -211,7 +212,7 @@ public abstract class Server_sharded {
 
     protected static void writeLog(int ID, long sequence_no, String subject, String predicate, String object, String time) throws IOException {
         //write to log file after update, get current timestamp if not a merge write
-        String fileToWrite = logFilePath + ID + "_" + (int) sequence_no / 100;
+        String fileToWrite = logFilePath + ID + "_" + (int) sequence_no / shardSize;
 
         long timestamp;
         if (time.length() == 0)
@@ -226,6 +227,124 @@ public abstract class Server_sharded {
         // Write the update entry to a file (replace with your actual file path)
         try (FileWriter writer = new FileWriter( fileToWrite, true)) {
             writer.append(updateEntry);
+        }
+    }
+
+    public static void updateLastSyncedLine(int serverId1, int serverId2) throws IOException {
+
+        Long[] lastSynced = Main.lastSyncedGlobal.get(serverId1).get(serverId2);
+        Long localLastSynced = lastSynced[0];
+        Long remoteLastSynced = lastSynced[1];
+
+        String localLogFile = Server_sharded.logFilePath + serverId1;
+        String remoteLogFile = Server_sharded.logFilePath + serverId2;
+
+        // Find the appropriate local log file and line number to start reading from
+        int localFileIndex = (int) (localLastSynced / Server_sharded.shardSize);
+        int localLineOffset = (int) (localLastSynced % Server_sharded.shardSize);
+
+        // Find the appropriate remote log file and line number to start reading from
+        int remoteFileIndex = (int) (remoteLastSynced / Server_sharded.shardSize);
+        int remoteLineOffset = (int) (remoteLastSynced % Server_sharded.shardSize);
+
+        int localLineCount = 0;
+        int remoteLineCount = 0;
+
+        long currentLocalseq = 0;
+        long currentRemoteseq = 0;
+
+        while (true) {
+            // Read from local log files
+            BufferedReader localReader = new BufferedReader(new FileReader(localLogFile + "_" + String.valueOf(localFileIndex)));
+
+            String localLine;
+            int stopper_flg = 0;
+            System.out.println(localLogFile + "_" + String.valueOf(localFileIndex));
+
+            while (true) {
+
+                // If processed shardSize lines, move to the next local log file
+                if (localLineCount % Server_sharded.shardSize == 0 && localLineCount > 0) {
+                    System.out.println("SWITCHING");
+                    localFileIndex++;
+                    localLineCount = 0;
+                    localLineOffset = 0;
+                    break;
+                }
+
+                if ((localLine = localReader.readLine()) == null) {
+                    System.out.println("BREAKING");
+                    stopper_flg = 1;
+                    break;
+                }
+
+                if (localLine.length() == 0) {
+                    localLineCount++;
+                    continue;
+                }
+
+                localLineCount++;
+
+                if (localLineCount < localLineOffset) continue;
+
+                // Process the line
+                // Your existing logic for processing the line goes here
+                String[] localParts = localLine.split(",");
+                currentLocalseq = Long.parseLong(localParts[0]);
+
+                if (currentLocalseq > localLastSynced)
+                    localLastSynced = currentLocalseq;
+            }
+            if(stopper_flg == 1)    break;
+
+            localReader.close();
+        }
+
+        while (true) {
+            // Read from local log files
+            BufferedReader remoteReader = new BufferedReader(new FileReader(remoteLogFile + "_" + String.valueOf(remoteFileIndex)));
+
+            String remoteLine;
+            int stopper_flg = 0;
+            System.out.println(remoteLogFile + "_" + String.valueOf(remoteFileIndex));
+
+            while (true) {
+
+                // If processed shardSize lines, move to the next remote log file
+                if (remoteLineCount % Server_sharded.shardSize == 0 && remoteLineCount > 0) {
+                    System.out.println("SWITCHING");
+                    remoteFileIndex++;
+                    remoteLineCount = 0;
+                    remoteLineOffset = 0;
+                    break;
+                }
+
+                if ((remoteLine = remoteReader.readLine()) == null) {
+                    System.out.println("BREAKING");
+                    stopper_flg = 1;
+                    break;
+                }
+
+                if (remoteLine.length() == 0) {
+                    remoteLineCount++;
+                    continue;
+                }
+
+                remoteLineCount++;
+
+                if (remoteLineCount < remoteLineOffset) continue;
+
+                // Process the line
+                // Your existing logic for processing the line goes here
+                String[] remoteParts = remoteLine.split(",");
+                currentLocalseq = Long.parseLong(remoteParts[0]);
+
+                if (currentRemoteseq > remoteLastSynced)
+                    remoteLastSynced = currentRemoteseq;
+            }
+            if(stopper_flg == 1)    break;
+
+            remoteReader.close();
         }
     }
 }

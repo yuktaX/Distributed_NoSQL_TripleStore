@@ -10,10 +10,12 @@ import java.util.Map;
 import java.util.Scanner;
 import org.neo4j.driver.Driver;
 
+
 public class Main {
 
     public static Map<Integer, Map<Integer, Long[]>> lastSyncedGlobal = new HashMap<>();
-    public static String path = "/home/vboxuser/Desktop/Desktop/Nosql/Distributed_NoSQL_TripleStore/Project/src/"; //change path to log files
+    //public static String path = "/home/vboxuser/Desktop/Desktop/Nosql/Distributed_NoSQL_TripleStore/Project/src/"; //change path to log files
+    public static String path =  "/home/yukta/College/sem6/NoSQL/project/NoSQL-Project/Project/src";
     public static Map<Integer, String> servers = new HashMap<>();
 
     public static void main(String[] args) throws Exception {
@@ -152,7 +154,7 @@ public class Main {
                             System.out.print("-------MERGE TWO DONE-------");
                         }
                         //syncing latest line after merging;
-                        updateLastSyncedLine(server_choice, server_id);
+                        Server_sharded.updateLastSyncedLine(server_choice, server_id);
                         break;
 
                     default:
@@ -160,47 +162,8 @@ public class Main {
                 }
             }
         }
-
-    }
-
-    //syncs latest updated line after merge
-    private static void updateLastSyncedLine(int serverId1, int serverId2) throws IOException {
-
-        BufferedReader reader1 = new BufferedReader(new FileReader(path + "server_" + serverId1 + ".txt"));
-        BufferedReader reader2 = new BufferedReader(new FileReader(path + "server_" + serverId2 + ".txt"));
-
-        try {
-            String line;
-            Long[] lastest = lastSyncedGlobal.get(serverId1).get(serverId2);
-            Long currentmyLine = lastest[0]; //server 1
-            Long currentyourLine = lastest[1]; //server 2
-
-            while ((line = reader1.readLine()) != null) {
-                if(line.length() == 0)
-                    continue;
-                String[] parts = line.split(",");
-                Long myLine = Long.parseLong(parts[0]);
-                if (currentmyLine < myLine) {
-                    currentmyLine = myLine;
-                }
-            }
-
-            while ((line = reader2.readLine()) != null) {
-                if(line.length() == 0)
-                    continue;
-                String[] parts = line.split(",");
-                Long yourLine = Long.parseLong(parts[0]);
-                if (currentyourLine < yourLine) {
-                    currentyourLine = yourLine;
-                }
-            }
-
-            lastSyncedGlobal.get(serverId1).put(serverId2, new Long[]{currentmyLine, currentyourLine});
-            lastSyncedGlobal.get(serverId2).put(serverId1, new Long[]{currentyourLine, currentmyLine});
-
-        } finally {
-            reader1.close();
-            reader2.close();
-        }
     }
 }
+
+
+
