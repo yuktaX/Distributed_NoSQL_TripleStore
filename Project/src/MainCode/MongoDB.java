@@ -11,6 +11,7 @@ import org.bson.conversions.Bson;
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
 
@@ -65,6 +66,21 @@ public class MongoDB extends Server {
             writer.append(updateEntry);
         }
 
+    }
+
+    public static Map<String,String[]> queryTriple(MongoCollection<Document> collection, String subject) {
+        
+        Map<String, String[]> results= new HashMap<>();
+        Bson filter = subject.isEmpty() ? null : Filters.eq("subject", subject);
+        for (Document document : collection.find(filter)) {
+            String retrievedSubject = document.getString("subject");
+            String retrievedPredicate = document.getString("predicate");
+            String retrievedObject = document.getString("object");
+            String [] tmp= {retrievedPredicate,retrievedObject};
+            results.put(retrievedSubject, tmp);
+            // System.out.println("Subject: " + retrievedSubject + ", Predicate: " + retrievedPredicate + ", Object: " + retrievedObject);
+        }
+        return results;
     }
 
     public static void queryTriple(MongoCollection<Document> collection, Scanner scanner) {
@@ -134,4 +150,3 @@ public class MongoDB extends Server {
         this.mongoClient.close();
     }
 }
-

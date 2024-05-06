@@ -1,0 +1,7 @@
+Run the command below to setup the file. Ensure that the test.csv file is present in the import directory. https://www.digitalocean.com/community/tutorials/how-to-install-and-configure-neo4j-on-ubuntu-20-04
+
+LOAD CSV WITH HEADERS FROM 'file:///test.csv' AS row 
+       MERGE(s:Entity {name : row.subject})
+       MERGE (o:Entity {name : row.object})
+       MERGE (s)-[:RELATION {predicate: row.predicate}]->(o);
+
