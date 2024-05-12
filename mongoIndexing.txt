@@ -1,0 +1,22 @@
+To add indexing to the yago dataset present mongo, run the following commands on the mongo shell
+
+use yago
+db.createCollection("yago")
+
+Exit from the mongo shell and run these commands
+
+The tsv file should be tab separated so if it isnt then run the following command on terminal
+
+sed 's/ /\t/g' ./yago_full_clean.tsv> ./yago_full_mod1.tsv
+
+Then run the command below to import tsv file to the recently created collection
+
+mongoimport --db yago --collection yago --type tsv -f subject,predicate,object yago_full_mod1.tsv
+
+Once the command runs successfully, enter the mongo shell
+
+use yago
+
+Run the command below to get the indexed collection
+
+db.yago.createIndex({"subject":1});

@@ -8,7 +8,8 @@ import java.util.Map;
 
 public abstract class Server_sharded {
 
-    static String logFilePath = "/home/yukta/College/sem6/NoSQL/project/NoSQL-Project/Project/src/Logs/server_";
+    static String logFilePath = "/home/vboxuser/Desktop/Desktop/Nosql/Distributed_NoSQL_TripleStore/Project/src/Logs/server_";
+    
     static int shardSize = 100;
 
     protected static Map<String, String[]> mergeLogs(int ID, int remoteID) throws IOException, ParseException {

@@ -22,7 +22,7 @@ import static org.neo4j.driver.Values.parameters;
 
 
 public class Neo4j extends Server_sharded{
-    private static final String DATABASE_URL = "bolt://localhost:7687"; // Adjust if MongoDB runs on a different port
+    private static final String DATABASE_URL = "bolt://localhost:7687"; // Adjust if Neo4j runs a different port
     private static final String USERNAME = "neo4j";
     private static final String PASSWORD = "nosql";
     private static final int ID = 3;

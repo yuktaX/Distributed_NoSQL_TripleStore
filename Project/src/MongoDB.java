@@ -11,8 +11,8 @@ import java.util.Scanner;
 public class MongoDB extends Server_sharded {
 
     private static final String CONNECTION_STRING = "mongodb://localhost:27017"; // Adjust if MongoDB runs on a different port
-    private static final String DATABASE_NAME = "sample_yago";
-    private static final String COLLECTION_NAME = "sample_yago";
+    private static final String DATABASE_NAME = "yago";
+    private static final String COLLECTION_NAME = "yago";
     private static final int ID = 2;
     static long sequence_no;
 
