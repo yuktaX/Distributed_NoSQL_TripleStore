@@ -22,7 +22,7 @@ import static org.neo4j.driver.Values.parameters;
 
 
 public class Neo4j extends Server_sharded{
-    private static final String DATABASE_URL = "bolt://localhost:7687"; // Adjust if MongoDB runs on a different port
+    private static final String DATABASE_URL = "bolt://localhost:7687"; // Adjust if Neo4j runs a different port
     private static final String USERNAME = "neo4j";
     private static final String PASSWORD = "nosql";
     private static final int ID = 3;
@@ -40,7 +40,7 @@ public class Neo4j extends Server_sharded{
     public static void updateTriple(Driver driver, String subject, String predicate, String object, String time) throws Exception{
         try(Session session = driver.session()){
 
-            String query = "MATCH (s {name : $subjectValue})-[p {predicate: $predicateValue}]->(o) RETURN s, p, o";
+            String query = "MATCH (s:Entity {name : $subjectValue})-[p {predicate: $predicateValue}]->(o) RETURN s, p, o";
 
             Result result = session.run(query,parameters("subjectValue",subject,"predicateValue",predicate));
 
@@ -55,7 +55,7 @@ public class Neo4j extends Server_sharded{
 
                 }
                 else {
-                    String update = "MATCH (s {name : $subjectValue})-[p {predicate: $predicateValue}]->(o) WITH s,p,o SET o.name = $objectValue RETURN s, p, o";
+                    String update = "MATCH (s:Entity {name : $subjectValue})-[p {predicate: $predicateValue}]->(o) WITH s,p,o SET o.name = $objectValue RETURN s, p, o";
 
                     Result resultnew = session.run(update,parameters("subjectValue",subject,"predicateValue",predicate, "objectValue",object));
 
@@ -83,7 +83,7 @@ public class Neo4j extends Server_sharded{
         try (Session session = driver.session()) {
 
             // Run Cypher query
-            String query = "MATCH (s {name: $subjectValue})-[p]->(o) RETURN s, p, o";
+            String query = "MATCH (s:Entity {name: $subjectValue})-[p]->(o) RETURN s, p, o";
 
             Result result = session.run(query,parameters("subjectValue",subjectValue));
 

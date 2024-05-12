@@ -9,7 +9,7 @@ import java.sql.SQLException;
 
 public class Postgres extends Server_sharded {
 
-    private static final String DATABASE_URL = "jdbc:postgresql://localhost:5432/NoSQL_project";
+    private static final String DATABASE_URL = "jdbc:postgresql://localhost:5432/postgres";
     private static final String USERNAME = "postgres";
     private static final String PASSWORD = "postgres";
     private static final int ID = 1;
@@ -31,7 +31,7 @@ public class Postgres extends Server_sharded {
 
     public static void updateTriple(Connection connection, String subject, String predicate, String object, String time) throws SQLException, IOException {
 
-        String sql = "UPDATE sample_yago SET object = ? WHERE subject = ? AND predicate = ?";
+        String sql = "UPDATE yago SET object = ? WHERE subject = ? AND predicate = ?";
         PreparedStatement statement = connection.prepareStatement(sql);
         statement.setString(1, object);
         statement.setString(2, subject);
@@ -74,7 +74,7 @@ public class Postgres extends Server_sharded {
         scanner.nextLine();
         String subject = scanner.nextLine(); // Consume extra newline
 
-        String sql = "SELECT * FROM sample_yago";
+        String sql = "SELECT * FROM yago";
         if (subject.length() != 0) {
             sql += " WHERE subject = ?";
         } else {
@@ -98,7 +98,7 @@ public class Postgres extends Server_sharded {
     }
 
     public static void insertTriple(Connection connection, String subject, String predicate, String object) throws SQLException {
-        String sql = "INSERT INTO sample_yago (subject, predicate, object) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO yago (subject, predicate, object) VALUES (?, ?, ?)";
         PreparedStatement statement = connection.prepareStatement(sql);
         statement.setString(1, subject);
         statement.setString(2, predicate);

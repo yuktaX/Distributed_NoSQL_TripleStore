@@ -1,0 +1,23 @@
+Run the command below to setup the file. Ensure that the yago_full_clean.tsv file is present in the import directory. https://www.digitalocean.com/community/tutorials/how-to-install-and-configure-neo4j-on-ubuntu-20-04
+
+Ensure that the rows are separated by files. If not then use the command : 
+
+sed 's/ /\t/g' ./yago_full_clean.tsv> ./yago_full_mod1.tsv
+
+To load the entire yago dataset, need to increase the max heap size : 
+
+https://stackoverflow.com/questions/44048898/can-heap-size-be-increased-on-neo4j-community-edition
+
+If it doesn't work then a subset of the data can be loaded.
+
+Open cypher-shell and load the dataset by using the command: 
+
+LOAD CSV FROM 'file:///yago_full_mod1.tsv' AS row FIELDTERMINATOR '\t'
+       MERGE(s:Entity {name : row[0]})
+       MERGE (o:Entity {name : row[0]})
+       MERGE (s)-[:RELATION {predicate: row[0]}]->(o);
+
+To index run :
+
+CREATE INDEX ON :Entity(name);
+
