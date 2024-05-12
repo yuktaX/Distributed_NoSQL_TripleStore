@@ -1,0 +1,10 @@
+CREATE TABLE yago (                                                      subject TEXT,
+predicate TEXT,
+object TEXT);
+
+\copy yago (subject, predicate, object) FROM 'yago_full_mod1.tsv' DELIMITER E'\t' CSV;
+
+
+CREATE INDEX index_subject ON yago (subject);
+
+
