@@ -49,7 +49,7 @@ To perform indexing on MongoDB checkout [mongoDbIndexing](/mongoIndexing.txt)
 
 ### Neo4j
 
-To perform indexing on Neo4j, checkout [neo4jIndexing](/mongoIndexing.txt)
+To perform indexing on Neo4j, checkout [neo4jIndexing](/neo4jIndexing.txt)
 
 
 
